@@ -12,16 +12,16 @@ export default async function handler(req, res) {
  console.log("📦 RAW BODY:", JSON.stringify(body));
   const kvUrl = process.env.UPSTASH_REDIS_REST_URL;
   const kvToken = process.env.UPSTASH_REDIS_REST_TOKEN;
-
-  const donation = {
-    id: body.invoice_id || Date.now().toString(),
-    nama: body.donatur_name || "Anonymous",
-    amount: body.amount_raw || 0,
-    message: body.donatur_note || "",
-    email: body.donatur_email || "",
+  
+const donation = {
+    id: body.invoice_id || body.id || Date.now().toString(),
+    nama: body.donatur_name || body.name || body.supporter_name || body.username || "Anonymous",
+    amount: body.amount_raw || body.amount || body.price || body.nominal || 0,
+    message: body.donatur_note || body.message || body.note || "",
+    email: body.donatur_email || body.email || "",
     timestamp: new Date().toISOString(),
     processed: false
-  };
+};
 
   // Simpan pakai pipeline
   await fetch(`${kvUrl}/pipeline`, {
