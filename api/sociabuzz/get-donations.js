@@ -5,8 +5,8 @@ export default async function handler(req, res) {
 
   if (req.method !== "GET") return res.status(405).json({ error: "Method not allowed" });
 
-  const kvUrl = process.env.KV_REST_API_URL;
-  const kvToken = process.env.KV_REST_API_TOKEN;
+  const kvUrl = process.env.UPSTASH_REDIS_REST_URL;
+  const kvToken = process.env.UPSTASH_REDIS_REST_TOKEN;
 
   let donations = [];
   try {
@@ -14,7 +14,6 @@ export default async function handler(req, res) {
       headers: { Authorization: `Bearer ${kvToken}` }
     });
     const getData = await getRes.json();
-
     if (getData.result) {
       const parsed = JSON.parse(getData.result);
       donations = Array.isArray(parsed) ? parsed : [];
@@ -28,13 +27,9 @@ export default async function handler(req, res) {
 
   // Simpan balik
   try {
-    await fetch(`${kvUrl}/set/donations`, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${kvToken}`,
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify(JSON.stringify(donations))
+    await fetch(`${kvUrl}/set/donations/${encodeURIComponent(JSON.stringify(donations))}`, {
+      method: "GET",
+      headers: { Authorization: `Bearer ${kvToken}` }
     });
   } catch (e) {}
 
