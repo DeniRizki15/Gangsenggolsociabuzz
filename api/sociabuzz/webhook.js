@@ -9,6 +9,8 @@ export default async function handler(req, res) {
   if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
 
   const body = req.body;
+  const kvUrl = process.env.UPSTASH_REDIS_REST_URL;
+  const kvToken = process.env.UPSTASH_REDIS_REST_TOKEN;
 
   const donation = {
     id: body.invoice_id || Date.now().toString(),
@@ -20,34 +22,31 @@ export default async function handler(req, res) {
     processed: false
   };
 
-  const kvUrl = process.env.UPSTASH_REDIS_REST_URL;
-  const kvToken = process.env.UPSTASH_REDIS_REST_TOKEN;
-
   // Ambil data lama
   let donations = [];
   try {
-    const getRes = await fetch(`${kvUrl}/get/donations`, {
+    const getRes = await fetch(`${kvUrl}/lrange/donations/0/-1`, {
       headers: { Authorization: `Bearer ${kvToken}` }
     });
     const getData = await getRes.json();
-    if (getData.result) {
-      const parsed = JSON.parse(getData.result);
-      donations = Array.isArray(parsed) ? parsed : [];
+    if (getData.result && Array.isArray(getData.result)) {
+      donations = getData.result.map(d => JSON.parse(d));
     }
   } catch (e) {
     donations = [];
   }
 
-  donations.push(donation);
-  if (donations.length > 50) donations.splice(0, donations.length - 50);
-
-  // Simpan ke Upstash - format yang benar
-  const saveRes = await fetch(`${kvUrl}/set/donations/${encodeURIComponent(JSON.stringify(donations))}`, {
+  // Tambah donasi baru pakai LPUSH
+  await fetch(`${kvUrl}/lpush/donations/${encodeURIComponent(JSON.stringify(donation))}`, {
     method: "GET",
     headers: { Authorization: `Bearer ${kvToken}` }
   });
-  const saveData = await saveRes.json();
-  console.log("Save result:", JSON.stringify(saveData));
+
+  // Trim list max 50
+  await fetch(`${kvUrl}/ltrim/donations/0/49`, {
+    method: "GET",
+    headers: { Authorization: `Bearer ${kvToken}` }
+  });
 
   console.log("✅ Donasi tersimpan:", donation.nama, donation.amount);
   return res.status(200).json({ success: true });
