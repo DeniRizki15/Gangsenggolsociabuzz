@@ -4,10 +4,11 @@ export const config = {
   },
 };
 
-let donations = [];
+if (!global._donations) {
+  global._donations = [];
+}
 
 export default function handler(req, res) {
-  // Handle CORS
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
@@ -21,7 +22,6 @@ export default function handler(req, res) {
   }
 
   const body = req.body;
-  console.log("Body diterima:", JSON.stringify(body));
 
   const donation = {
     id: body.invoice_id || Date.now().toString(),
@@ -33,11 +33,12 @@ export default function handler(req, res) {
     processed: false
   };
 
-  donations.push(donation);
+  global._donations.push(donation);
 
-  if (donations.length > 50) {
-    donations.splice(0, donations.length - 50);
+  if (global._donations.length > 50) {
+    global._donations.splice(0, global._donations.length - 50);
   }
 
+  console.log("✅ Donasi masuk:", donation.nama, donation.amount);
   return res.status(200).json({ success: true });
 }
