@@ -22,30 +22,17 @@ export default async function handler(req, res) {
     processed: false
   };
 
-  // Ambil data lama
-  let donations = [];
-  try {
-    const getRes = await fetch(`${kvUrl}/lrange/donations/0/-1`, {
-      headers: { Authorization: `Bearer ${kvToken}` }
-    });
-    const getData = await getRes.json();
-    if (getData.result && Array.isArray(getData.result)) {
-      donations = getData.result.map(d => JSON.parse(d));
-    }
-  } catch (e) {
-    donations = [];
-  }
-
-  // Tambah donasi baru pakai LPUSH
-  await fetch(`${kvUrl}/lpush/donations/${encodeURIComponent(JSON.stringify(donation))}`, {
-    method: "GET",
-    headers: { Authorization: `Bearer ${kvToken}` }
-  });
-
-  // Trim list max 50
-  await fetch(`${kvUrl}/ltrim/donations/0/49`, {
-    method: "GET",
-    headers: { Authorization: `Bearer ${kvToken}` }
+  // Simpan pakai pipeline
+  await fetch(`${kvUrl}/pipeline`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${kvToken}`,
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify([
+      ["lpush", "donations", JSON.stringify(donation)],
+      ["ltrim", "donations", 0, 49]
+    ])
   });
 
   console.log("✅ Donasi tersimpan:", donation.nama, donation.amount);
