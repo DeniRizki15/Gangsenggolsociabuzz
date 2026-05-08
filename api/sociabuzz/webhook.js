@@ -24,16 +24,22 @@ export default async function handler(req, res) {
   const kvToken = process.env.KV_REST_API_TOKEN;
 
   // Ambil data lama
-  const getRes = await fetch(`${kvUrl}/get/donations`, {
-    headers: { Authorization: `Bearer ${kvToken}` }
-  });
-  const getData = await getRes.json();
-
   let donations = [];
-  if (getData.result) {
-    try { donations = JSON.parse(getData.result); } catch { donations = []; }
+  try {
+    const getRes = await fetch(`${kvUrl}/get/donations`, {
+      headers: { Authorization: `Bearer ${kvToken}` }
+    });
+    const getData = await getRes.json();
+
+    if (getData.result) {
+      const parsed = JSON.parse(getData.result);
+      donations = Array.isArray(parsed) ? parsed : [];
+    }
+  } catch (e) {
+    donations = [];
   }
 
+  // Tambah donasi baru
   donations.push(donation);
   if (donations.length > 50) donations.splice(0, donations.length - 50);
 
