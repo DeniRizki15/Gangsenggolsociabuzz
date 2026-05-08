@@ -1,11 +1,27 @@
-import { donations } from "../../lib/store.js";
+export const config = {
+  api: {
+    bodyParser: true,
+  },
+};
+
+let donations = [];
 
 export default function handler(req, res) {
+  // Handle CORS
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+
+  if (req.method === "OPTIONS") {
+    return res.status(200).end();
+  }
+
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Method not allowed" });
   }
 
   const body = req.body;
+  console.log("Body diterima:", JSON.stringify(body));
 
   const donation = {
     id: body.invoice_id || Date.now().toString(),
@@ -23,6 +39,5 @@ export default function handler(req, res) {
     donations.splice(0, donations.length - 50);
   }
 
-  console.log("Donasi masuk:", donation.nama, donation.amount);
   return res.status(200).json({ success: true });
 }
