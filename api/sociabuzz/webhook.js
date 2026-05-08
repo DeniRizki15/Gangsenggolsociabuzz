@@ -14,12 +14,12 @@ export default async function handler(req, res) {
   const kvToken = process.env.UPSTASH_REDIS_REST_TOKEN;
   
 const donation = {
-    id: body.invoice_id || body.id || Date.now().toString(),
-    nama: body.donatur_name || body.name || body.supporter_name || body.username || "Anonymous",
-    amount: body.amount_raw || body.amount || body.price || body.nominal || 0,
-    message: body.donatur_note || body.message || body.note || "",
-    email: body.donatur_email || body.email || "",
-    timestamp: new Date().toISOString(),
+    id: body.id || Date.now().toString(),
+    nama: body.supporter || "Anonymous",
+    amount: body.amount || 0,
+    message: body.message || "",
+    email: body.email_supporter || "",
+    timestamp: body.created_at || new Date().toISOString(),
     processed: false
 };
 
