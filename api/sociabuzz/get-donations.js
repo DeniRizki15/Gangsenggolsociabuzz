@@ -10,28 +10,37 @@ export default async function handler(req, res) {
 
   let donations = [];
   try {
-    const getRes = await fetch(`${kvUrl}/get/donations`, {
+    const getRes = await fetch(`${kvUrl}/lrange/donations/0/-1`, {
       headers: { Authorization: `Bearer ${kvToken}` }
     });
     const getData = await getRes.json();
-    if (getData.result) {
-      const parsed = JSON.parse(getData.result);
-      donations = Array.isArray(parsed) ? parsed : [];
+    if (getData.result && Array.isArray(getData.result)) {
+      donations = getData.result.map(d => JSON.parse(d));
     }
   } catch (e) {
     donations = [];
   }
 
+  // Ambil yang belum diproses
   const unprocessed = donations.filter(d => !d.processed);
-  donations.forEach(d => d.processed = true);
 
-  // Simpan balik
-  try {
-    await fetch(`${kvUrl}/set/donations/${encodeURIComponent(JSON.stringify(donations))}`, {
+  // Update processed = true untuk semua
+  if (unprocessed.length > 0) {
+    // Hapus semua lalu simpan ulang dengan processed = true
+    const updated = donations.map(d => ({ ...d, processed: true }));
+    
+    await fetch(`${kvUrl}/del/donations`, {
       method: "GET",
       headers: { Authorization: `Bearer ${kvToken}` }
     });
-  } catch (e) {}
+
+    for (const d of updated.reverse()) {
+      await fetch(`${kvUrl}/lpush/donations/${encodeURIComponent(JSON.stringify(d))}`, {
+        method: "GET",
+        headers: { Authorization: `Bearer ${kvToken}` }
+      });
+    }
+  }
 
   return res.status(200).json({ success: true, donations: unprocessed });
 }
