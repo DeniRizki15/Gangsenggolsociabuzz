@@ -8,6 +8,7 @@ export default async function handler(req, res) {
   const kvUrl = process.env.UPSTASH_REDIS_REST_URL;
   const kvToken = process.env.UPSTASH_REDIS_REST_TOKEN;
 
+  // Ambil semua donasi
   let donations = [];
   try {
     const getRes = await fetch(`${kvUrl}/lrange/donations/0/-1`, {
@@ -24,22 +25,23 @@ export default async function handler(req, res) {
   // Ambil yang belum diproses
   const unprocessed = donations.filter(d => !d.processed);
 
-  // Update processed = true untuk semua
-  if (unprocessed.length > 0) {
-    // Hapus semua lalu simpan ulang dengan processed = true
+  // Hapus semua lalu simpan ulang dengan processed = true
+  if (donations.length > 0) {
     const updated = donations.map(d => ({ ...d, processed: true }));
+    const pipeline = updated.map(d => ["lpush", "donations", JSON.stringify(d)]);
     
     await fetch(`${kvUrl}/del/donations`, {
-      method: "GET",
       headers: { Authorization: `Bearer ${kvToken}` }
     });
 
-    for (const d of updated.reverse()) {
-      await fetch(`${kvUrl}/lpush/donations/${encodeURIComponent(JSON.stringify(d))}`, {
-        method: "GET",
-        headers: { Authorization: `Bearer ${kvToken}` }
-      });
-    }
+    await fetch(`${kvUrl}/pipeline`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${kvToken}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify(pipeline)
+    });
   }
 
   return res.status(200).json({ success: true, donations: unprocessed });
