@@ -1,44 +1,30 @@
-export const config = { api: { bodyParser: false } };
+export const config = { api: { bodyParser: true } };
+
+if (!global._donations) global._donations = [];
+
 export default async function handler(req, res) {
   res.setHeader("Access-Control-Allow-Origin", "*");
-  if (req.method !== "GET") return res.status(405).json({ error: "Method not allowed" });
+  res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+  if (req.method === "OPTIONS") return res.status(200).end();
+  if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
 
-  const kvUrl = process.env.UPSTASH_REDIS_REST_URL;
-  const kvToken = process.env.UPSTASH_REDIS_REST_TOKEN;
-  const headers = { 
-    Authorization: `Bearer ${kvToken}`, 
-    "Content-Type": "application/json" 
+  const body = req.body;
+  console.log("📦 RAW BODY:", JSON.stringify(body));
+
+  const donation = {
+    id: body.id || Date.now().toString(),
+    nama: body.supporter || "Anonymous",
+    amount: body.amount || 0,
+    message: body.message || "",
+    email: body.email_supporter || "",
+    timestamp: body.created_at || new Date().toISOString(),
+    processed: false
   };
 
-  let donations = [];
-  try {
-    const getRes = await fetch(`${kvUrl}/lrange/donations/0/-1`, { headers });
-    const getData = await getRes.json();
-    if (getData.result && Array.isArray(getData.result)) {
-      donations = getData.result.map(d => JSON.parse(d));
-    }
-  } catch (e) {
-    return res.status(200).json({ success: true, donations: [] });
-  }
+  global._donations.unshift(donation);
+  if (global._donations.length > 50) global._donations = global._donations.slice(0, 50);
 
-  const unprocessed = donations.filter(d => !d.processed);
-
-  // Hanya rebuild kalau ada yang unprocessed
-  if (unprocessed.length > 0) {
-    const updated = donations.map(d => ({ ...d, processed: true }));
-    const pipeline = [
-      ["del", "donations"],
-      ...updated.map(d => ["rpush", "donations", JSON.stringify(d)]), // rpush, bukan lpush
-      ["ltrim", "donations", 0, 49]
-    ];
-
-    const rebuildRes = await fetch(`${kvUrl}/pipeline`, {
-      method: "POST",
-      headers,
-      body: JSON.stringify(pipeline)
-    });
-    await rebuildRes.json(); // tunggu Redis selesai
-  }
-
-  return res.status(200).json({ success: true, donations: unprocessed });
+  console.log("✅ Donasi tersimpan:", donation.nama, donation.amount);
+  return res.status(200).json({ success: true });
 }
