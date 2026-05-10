@@ -1,4 +1,7 @@
 export const config = { api: { bodyParser: true } };
+
+if (!global._donations) global._donations = [];
+
 export default async function handler(req, res) {
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
@@ -8,9 +11,6 @@ export default async function handler(req, res) {
 
   const body = req.body;
   console.log("📦 RAW BODY:", JSON.stringify(body));
-
-  const kvUrl = process.env.UPSTASH_REDIS_REST_URL;
-  const kvToken = process.env.UPSTASH_REDIS_REST_TOKEN;
 
   const donation = {
     id: body.id || Date.now().toString(),
@@ -22,19 +22,8 @@ export default async function handler(req, res) {
     processed: false
   };
 
-  // Tunggu Redis benar-benar selesai nulis
-  const pipelineRes = await fetch(`${kvUrl}/pipeline`, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${kvToken}`,
-      "Content-Type": "application/json"
-    },
-    body: JSON.stringify([
-      ["rpush", "donations", JSON.stringify(donation)], // rpush biar urutan benar
-      ["ltrim", "donations", 0, 49]
-    ])
-  });
-  await pipelineRes.json(); // ← tunggu konfirmasi Redis
+  global._donations.unshift(donation);
+  if (global._donations.length > 50) global._donations = global._donations.slice(0, 50);
 
   console.log("✅ Donasi tersimpan:", donation.nama, donation.amount);
   return res.status(200).json({ success: true });
