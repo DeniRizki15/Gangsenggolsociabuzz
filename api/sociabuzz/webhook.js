@@ -6,27 +6,21 @@ export default async function handler(req, res) {
   if (req.method === "OPTIONS") return res.status(200).end();
   if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
 
-  const token = req.headers["x-webhook-token"] || req.query.token || req.body?.token;
-  if (!token || token !== process.env.BAGIBAGI_SECRET) {
-    console.warn("⛔ Unauthorized webhook attempt");
-    return res.status(401).json({ error: "Unauthorized" });
-  }
-
   const body = req.body;
-  console.log("📦 RAW BODY BAGIBAGI:", JSON.stringify(body));
+  console.log("📦 RAW BODY:", JSON.stringify(body));
 
   const kvUrl = process.env.UPSTASH_REDIS_REST_URL;
   const kvToken = process.env.UPSTASH_REDIS_REST_TOKEN;
 
   const donation = {
-    id: Date.now().toString(),
-    nama: body.donorName || body.donor_name || body.name || "Anonymous",
-    amount: Number(body.amount) || 0,
+    id: body.id || Date.now().toString(),
+    nama: body.supporter || "Anonymous",
+    amount: body.amount || 0,
     message: body.message || "",
-    email: "",
-    timestamp: new Date().toISOString(),
+    email: body.email_supporter || "",
+    timestamp: body.created_at || new Date().toISOString(),
     processed: false,
-    source: "bagibagi"
+    source: "sociabuzz"
   };
 
   await fetch(`${kvUrl}/pipeline`, {
@@ -41,6 +35,6 @@ export default async function handler(req, res) {
     ])
   });
 
-  console.log("✅ BagiBagi tersimpan:", donation.nama, donation.amount);
+  console.log("✅ Donasi tersimpan:", donation.nama, donation.amount);
   return res.status(200).json({ success: true });
 }
