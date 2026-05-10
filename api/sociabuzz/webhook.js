@@ -6,6 +6,12 @@ export default async function handler(req, res) {
   if (req.method === "OPTIONS") return res.status(200).end();
   if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
 
+  const token = req.headers["x-webhook-token"] || req.query.token || req.body?.token;
+  if (!token || token !== process.env.BAGIBAGI_SECRET) {
+    console.warn("⛔ Unauthorized webhook attempt");
+    return res.status(401).json({ error: "Unauthorized" });
+  }
+
   const body = req.body;
   console.log("📦 RAW BODY BAGIBAGI:", JSON.stringify(body));
 
