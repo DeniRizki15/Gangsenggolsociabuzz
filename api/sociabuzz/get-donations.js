@@ -26,7 +26,7 @@ export default async function handler(req, res) {
   const unprocessed = donations.filter(d => !d.processed);
 
   // Hapus semua lalu simpan ulang dengan processed = true
-  if (donations.length > 0) {
+ if (unprocessed.length > 0) {
     const updated = donations.map(d => ({ ...d, processed: true }));
     const pipeline = updated.map(d => ["lpush", "donations", JSON.stringify(d)]);
     
