@@ -1,13 +1,15 @@
-export const config = { api: { bodyParser: false } };
+// GET /api/sociabuzz/get-donations
+if (url.pathname === "/api/sociabuzz/get-donations" && request.method === "GET") {
+  const existing = await env.DONATIONS.get("list");
+  let donations = existing ? JSON.parse(existing) : [];
 
-if (!global._donations) global._donations = [];
+  const unprocessed = donations.filter(d => !d.processed);
+  
+  // Hanya write kalau ada donasi baru
+  if (unprocessed.length > 0) {
+    donations = donations.map(d => ({ ...d, processed: true }));
+    await env.DONATIONS.put("list", JSON.stringify(donations));
+  }
 
-export default async function handler(req, res) {
-  res.setHeader("Access-Control-Allow-Origin", "*");
-  if (req.method !== "GET") return res.status(405).json({ error: "Method not allowed" });
-
-  const unprocessed = global._donations.filter(d => !d.processed);
-  global._donations = global._donations.map(d => ({ ...d, processed: true }));
-
-  return res.status(200).json({ success: true, donations: unprocessed });
+  return new Response(JSON.stringify({ success: true, donations: unprocessed }), { headers });
 }
